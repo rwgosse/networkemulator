@@ -1,7 +1,7 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Model to represent network settings as loaded from configuration file
+ * and used by the network emulator.
+ * 
  */
 package pkg7005finalproject.models;
 
