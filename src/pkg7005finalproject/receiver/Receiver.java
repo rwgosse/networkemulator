@@ -9,8 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import pkg7005finalproject.helpers.LogHelper;
-import pkg7005finalproject.helpers.PacketHelper;
+import pkg7005finalproject.helpers.Helper;
 import pkg7005finalproject.models.Client;
 import pkg7005finalproject.models.Network;
 import pkg7005finalproject.models.Packet;
@@ -23,6 +22,10 @@ public class Receiver extends Client {
 
     private int currentSequenceNumber;
     private ArrayList<Packet> ackedPacketList;
+    private static final int SOT = 1;
+    private static final int DATA = 2;
+    private static final int ACK = 3;
+    private static final int EOT = 4;
 
     public Receiver() {
         super();
@@ -32,6 +35,7 @@ public class Receiver extends Client {
 
     @Override
     public void start() {
+        Helper.write("-- RECEIVER START --");
         this.initializeServer(clientSettings.getReceiverPort());
         this.awaitHandshake();
         boolean connectionOpen = true;
@@ -46,24 +50,24 @@ public class Receiver extends Client {
 
                 switch (incommingPacket.getType()) {
 
-                    case 2: // data packet
+                    case DATA: // data packet
 
                         // update current sequence number
                         this.currentSequenceNumber = incommingPacket.getSequenceNumber();
 
                         // craft and send ACK packet
-                        Packet ackPacket = this.createPacket(3); // ack packet
+                        Packet ackPacket = this.createPacket(ACK); // ack packet
                         this.sendPacket(ackPacket);
 
                         // if packet hasn't been ACK'ed before.
                         if (!this.isAcked(incommingPacket.getSequenceNumber())) {
                             totalPackets++;
-                            LogHelper.write(PacketHelper.generateClientPacketLog(incommingPacket, false));
-                             LogHelper.write(PacketHelper.generateClientPacketLog(ackPacket, true));
+                            Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
+                            Helper.write("RECEIVER - " + Helper.generateClientPacketLog(ackPacket, true));
                         } else {
                             // ACKing again - earlier ACK probably got lost
                             totalDuplicates++;
-                            LogHelper.write(PacketHelper.generateClientResendLog(incommingPacket, false));
+                            Helper.write("RECEIVER - " + Helper.generateClientResendLog(incommingPacket, false));
                         }
 
                         // add to list of ack'ed packets
@@ -71,11 +75,11 @@ public class Receiver extends Client {
                         break;
 
                     case 4: // end of transmission packet
-                        // listen for EOT
+                
 
-                       LogHelper.write(PacketHelper.generateClientPacketLog(incommingPacket, false));
-                       LogHelper.write("Total Packets Received: " + totalPackets);
-                       LogHelper.write("Total Duplicate ACK's:  " + totalDuplicates);
+                        Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
+                        Helper.write("RECEIVER - " + "Total Packets Received: " + totalPackets);
+                        Helper.write("RECEIVER - " + "Total Duplicate ACK's:  " + totalDuplicates);
                         connectionOpen = false;
                         break;
 
@@ -87,14 +91,13 @@ public class Receiver extends Client {
             }
 
         }
-
+        Helper.write("RECEIVER - Transmission Complete");
+        System.exit(0);
     }
 
     @Override
     protected Packet createPacket(int packetType) {
-        //throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-
-        return PacketHelper.makePacket(this.clientSettings.getSenderAddress()
+        return Helper.makePacket(this.clientSettings.getSenderAddress()
                 .getHostAddress(), this.clientSettings.getSenderPort(), this.clientSettings
                 .getReceiverAddress().getHostAddress(), this.clientSettings.getReceiverPort(),
                 packetType, this.currentSequenceNumber, this.currentSequenceNumber,
@@ -108,21 +111,20 @@ public class Receiver extends Client {
 
             if (incommingPacket.getType() == 1) // start of transmission
             {
-                LogHelper.write(PacketHelper.generateClientPacketLog(incommingPacket, false));
+                Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
 
-                // send SOT back to signify receive.
                 Packet outGoingPacket = this.createPacket(1);
                 this.sendPacket(outGoingPacket);
 
-                LogHelper.write(PacketHelper.generateClientPacketLog(incommingPacket, true));
+                Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, true));
             } else {
-               LogHelper.write(PacketHelper.generateClientPacketLog(incommingPacket, false));
+                Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
 
                 // ummm, not a start of transmission packet
                 this.awaitHandshake();
             }
-        } catch (ClassNotFoundException e) {
-              LogHelper.write(e.getMessage());
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(Receiver.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(Receiver.class.getName()).log(Level.SEVERE, null, ex);
         }

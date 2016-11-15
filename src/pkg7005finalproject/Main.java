@@ -135,14 +135,17 @@ public class Main {
         }
         return networkSettings;
     }
-
+    /**
+     * 
+     * @return 
+     */
     private static ClientSettings loadClientSettings() {
         Properties incommingProperties = new Properties();
         InputStream inputStream = null;
         ClientSettings clientSettings = new ClientSettings();
 
         try {
-            // create a stream to the properties file
+            
             inputStream = new FileInputStream("ClientSettings.cfg");
 
             // load the configuration file

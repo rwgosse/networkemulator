@@ -13,39 +13,26 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import pkg7005finalproject.helpers.LogHelper;
-import pkg7005finalproject.helpers.PacketHelper;
+import pkg7005finalproject.helpers.Helper;
 import pkg7005finalproject.models.Client;
 import pkg7005finalproject.models.Network;
 import pkg7005finalproject.models.Packet;
 
 /**
  *
- * @author Richard
+ * @author Richard Gosse
  */
 public class Sender extends Client {
 
-    /**
-     * The current sequence number.
-     *
-     * Initialized to 1 in the constructor.
-     */
     private int sequenceNumber;
-
-    /**
-     * The current packet window.
-     */
     private ArrayList<Packet> packetWindow;
-
-    /**
-     * The timer for ACK's.
-     */
     private Timer timer;
-
-    /**
-     * Boolean switch to wait for Ack's.
-     */
     private boolean waitingForAcks;
+    
+    private static final int SOT = 1;
+    private static final int DATA = 2;
+    private static final int ACK = 3;
+    private static final int EOT = 4;
 
     /**
      * Create a client, whose sole purpose is to send (transmit) to the
@@ -61,72 +48,52 @@ public class Sender extends Client {
 
     @Override
     public void start() {
-        // initialize udp server
+        Helper.write("-- SENDER START --");
         this.initializeServer(this.clientSettings.getSenderPort());
-
-        // take control of the channel
-        this.sendTakeControlPacket();
-
-        // total packets sent so far
+        this.handShake();
         int packetsSent = 0;
 
-        // once, all ack's arrive, empty window, and move onto the next window
         while (packetsSent < this.clientSettings.getMaxPackets()) {
-            // generate packets for a window and send
             this.generateWindowAndSend();
-
-            // we are now waiting for ack's.
             this.waitingForAcks = true;
-
-            // set timer and after it's over, check for ACK's.
             this.setTimerForACKs();
-
-            // wait for ack's for each packet
             while (!this.packetWindow.isEmpty()) {
-                // set a timer only if we are not already waiting..no point invoking it again and
-                // again
                 if (!this.waitingForAcks) {
-                    // set timer and after it's over, check for ACK's.
                     this.setTimerForACKs();
-
-                    LogHelper.write("Window Status: " + packetWindow.size()
-                            + " packets left in the current window!");
+                    Helper.write("SENDER - Window Status: " + packetWindow.size()
+                            + " packets remaining.");
                 }
             }
-
-            // windowSize number of more packets have been sent
             packetsSent += this.clientSettings.getWindowSize();
 
-            LogHelper.write("Sent Packets:      " + packetsSent);
-            LogHelper.write("Remaining Packets: "
+            Helper.write("SENDER - Packets Sent:      " + packetsSent);
+            Helper.write("SENDER - Packets Remaining: "
                     + (this.clientSettings.getMaxPackets() - packetsSent));
         }
 
-        // when all window packets sent, send EOT
         this.sendEndOfTransmissionPacket();
-
-        //exit
+        Helper.write("SENDER - Transmission Complete");
         System.exit(0);
     }
 
     /**
-     * Send the packet to take control of the communication channel.
+     * Create the connection to receiver
      */
-    private void sendTakeControlPacket() {
-        // create a SOT packet
+    private void handShake() {
+
         Packet packet = this.createPacket(1);
 
         // send the packet
         this.sendPacket(packet);
 
-        LogHelper.write(PacketHelper.generateClientPacketLog(packet, true));
+        Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
 
         // wait for SOT packet from receiver
         try {
             Packet receiverResponse = Network.getPacket(this.listener);
 
             if (receiverResponse.getType() == 1) {
-                LogHelper.write(PacketHelper.generateClientPacketLog(packet, false));
+                Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, false));
             }
 
             // wait for 2 seconds before sending data packets.
@@ -137,7 +104,7 @@ public class Sender extends Client {
             Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InterruptedException ex) {
             Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
-        } 
+        }
     }
 
     /**
@@ -150,12 +117,12 @@ public class Sender extends Client {
         // send the packet
         this.sendPacket(packet);
 
-        LogHelper.write(PacketHelper.generateClientPacketLog(packet, true));
+        Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
     }
 
     @Override
     protected Packet createPacket(int packetType) {
-        return PacketHelper.makePacket(this.clientSettings.getReceiverAddress().getHostAddress(),
+        return Helper.makePacket(this.clientSettings.getReceiverAddress().getHostAddress(),
                 this.clientSettings.getReceiverPort(), this.clientSettings.getSenderAddress()
                 .getHostAddress(), this.clientSettings.getSenderPort(), packetType,
                 this.sequenceNumber, this.sequenceNumber, this.clientSettings.getWindowSize());
@@ -175,7 +142,7 @@ public class Sender extends Client {
             // send the packet
             this.sendPacket(packet);
 
-            LogHelper.write(PacketHelper.generateClientPacketLog(packet, true));
+            Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
 
             // increment the sequence number
             this.sequenceNumber++;
@@ -197,7 +164,7 @@ public class Sender extends Client {
             for (int i = 0; i < this.packetWindow.size(); i++) {
                 Packet packet = this.packetWindow.get(i);
                 this.sendPacket(packet);
-                LogHelper.write("Resending " + PacketHelper.generatePacketDetails(packet));
+                Helper.write("SENDER - " + "Resending " + Helper.generatePacketDetails(packet));
             }
 
             this.setTimerForACKs();
@@ -238,27 +205,24 @@ public class Sender extends Client {
              * been ACK'ed. AND Scan while the still waiting for ack's.
              */
             while (this.packetWindow.size() != 0 && this.waitingForAcks) {
-                
-                
+
                 Packet packet = Network.getPacket(Sender.this.listener);
-                
-                
 
                 //if an ACK received, log and remove from the window.
                 if (packet.getType() == 3) {
-                    LogHelper.write(PacketHelper.generateClientPacketLog(packet, false));
+                    Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, false));
                     Sender.this.removePacketFromWindow(packet.getAcknumber());
                 }
             }
         } catch (SocketTimeoutException ex) {
-            LogHelper.write("Socket Time Out");
+            Helper.write("SENDER - " + "Socket Time Out");
         } catch (SocketException ex) {
-            Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);  
+            Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
-        } 
+        }
     }
 
     /**
@@ -287,7 +251,5 @@ public class Sender extends Client {
         // not waiting for ack's now.
         this.waitingForAcks = false;
     }
-
-   
 
 }

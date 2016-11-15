@@ -11,8 +11,7 @@ import java.net.SocketException;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import pkg7005finalproject.helpers.LogHelper;
-import pkg7005finalproject.helpers.PacketHelper;
+import pkg7005finalproject.helpers.Helper;
 import pkg7005finalproject.models.*;
 
 /**
@@ -22,6 +21,10 @@ import pkg7005finalproject.models.*;
 public class Emulator {
 
     private NetworkSettings networkSettings;
+    private static final int SOT = 1;
+    private static final int DATA = 2;
+    private static final int ACK = 3;
+    private static final int EOT = 4;
 
     public Emulator(NetworkSettings networkSettings) {
         this.networkSettings = networkSettings;
@@ -31,6 +34,7 @@ public class Emulator {
      * Start the Network Emulator
      */
     public void start() {
+        Helper.write("-- EMULATOR START --");
         boolean active = true;
 
         //statistics for reporting
@@ -52,29 +56,29 @@ public class Emulator {
                 totalPackets++;
                 int type = packet.getType();
 
-                if (type == 1 || type == 4) { // allow control packets
+                if (type == SOT || type == EOT) { // allow control packets
                     Network.sendPacket(udpSocket, packet);
-                    LogHelper.write("CONTROL PACKET FORWARDED - SEQ: " + packet.getSequenceNumber() );
+                    Helper.write("EMULATOR - " + "CONTROL PACKET FORWARDED - SEQ: " + packet.getSequenceNumber() );
                     totalforwarded++;
 
                 } else {
                     if (getRandom() <= networkSettings.getDropRate()) {
                        // LogHelper.write("PACKET DROPPED - SEQ: " + packet.getSequenceNumber() );
-                        LogHelper.write(PacketHelper.generateNetworkPacketLog(packet, false));
+                        Helper.write("EMULATOR - " + Helper.generateNetworkPacketLog(packet, false));
                         totalDropped++;
                     } else {
                         Thread.sleep(this.networkSettings.getDelay());
 
                         Network.sendPacket(udpSocket, packet);
 
-                        LogHelper.write(PacketHelper.generateNetworkPacketLog(packet, true));
+                        Helper.write("EMULATOR - " + Helper.generateNetworkPacketLog(packet, true));
                         totalforwarded++;
                     }
                 }
 
-                LogHelper.write("Total packets:           " + totalPackets);
-                LogHelper.write("Total packets dropped:   " + totalDropped);
-                LogHelper.write("Total packets forwarded: " + totalforwarded);
+               Helper.write("EMULATOR - " + "Total packets:           " + totalPackets);
+               Helper.write("EMULATOR - " + "Total packets dropped:   " + totalDropped);
+               Helper.write("EMULATOR - " + "Total packets forwarded: " + totalforwarded);
             } catch (IOException ex) {
                 Logger.getLogger(Emulator.class.getName()).log(Level.SEVERE, null, ex);
             } catch (ClassNotFoundException ex) {

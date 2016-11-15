@@ -5,18 +5,28 @@
  */
 package pkg7005finalproject.helpers;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import pkg7005finalproject.models.Packet;
 
 /**
  *
- * @author Richard
+ * @author Richard Gosse
  */
-public class PacketHelper {
-   
+public class Helper {
+
+    public static String logFile = "logfile";
 
     /**
      * Generates a packet with the details provided.
-     * 
+     *
      * @param destinationAddress the destination address
      * @param destinationPort the destination port
      * @param sourceAddress the source address
@@ -25,17 +35,15 @@ public class PacketHelper {
      * @param sequenceNumber the sequence number of packet
      * @param acknowledgementNumber the ack number
      * @param windowSize the window size
-     * 
+     *
      * @return the generated packet
      */
     public static Packet makePacket(String destinationAddress, int destinationPort,
             String sourceAddress, int sourcePort, int packetType, int sequenceNumber,
-            int acknowledgementNumber, int windowSize)
-    {
+            int acknowledgementNumber, int windowSize) {
         Packet packet = new Packet();
 
-        switch (packetType)
-        {
+        switch (packetType) {
             case 1:
                 // SOT
                 packet.setData("Handshake");
@@ -74,56 +82,48 @@ public class PacketHelper {
     }
 
     /**
-     * Generates a generic packet log for network module. This can be put on the screen or in the
-     * log files.
-     * 
+     * Generates a generic packet log for network module. This can be put on the
+     * screen or in the log files.
+     *
      * @param packet the packet to generate the logs for
      * @param forwarded if the packet was forwarded or dropped.
-     * 
+     *
      * @return a generic packet log
      */
-    public static String generateNetworkPacketLog(Packet packet, boolean forwarded)
-    {
+    public static String generateNetworkPacketLog(Packet packet, boolean forwarded) {
         StringBuilder log = new StringBuilder();
 
-        if (forwarded)
-        {
+        if (forwarded) {
             log.append("PACKET FORWARDED ");
-        }
-        else
-        {
+        } else {
             log.append("PACKET DROPPED ");
         }
 
-        log.append(PacketHelper.generatePacketDetails(packet));
+        log.append(Helper.generatePacketDetails(packet));
 
         return log.toString();
 
     }
 
     /**
-     * Generates a generic packet log for clients. This can be put on the screen or in the log
-     * files.
-     * 
+     * Generates a generic packet log for clients. This can be put on the screen
+     * or in the log files.
+     *
      * @param packet the packet to generate the logs for
      * @param sending true if sending packet, false if received it.
-     * 
+     *
      * @return a generic packet log
      */
-    public static String generateClientPacketLog(Packet packet, boolean sending)
-    {
+    public static String generateClientPacketLog(Packet packet, boolean sending) {
         StringBuilder log = new StringBuilder();
 
-        if (sending)
-        {
+        if (sending) {
             log.append("Sending   ");
-        }
-        else
-        {
+        } else {
             log.append("Received  ");
         }
 
-        log.append(PacketHelper.generatePacketDetails(packet));
+        log.append(Helper.generatePacketDetails(packet));
 
         return log.toString();
 
@@ -131,44 +131,38 @@ public class PacketHelper {
 
     /**
      * Generate client log for when resending (data or ACK) stuff.
-     * 
-     * @param packet the packet to generate the log for
-     * @param resendingData true if resending data, false if resending ACK
-     * 
+     *
+     * @param packet 
+     * @param resendingData 
+     *
      * @return log
      */
-    public static String generateClientResendLog(Packet packet, boolean resendingData)
-    {
+    public static String generateClientResendLog(Packet packet, boolean resendingData) {
         StringBuilder log = new StringBuilder();
 
-        if (resendingData)
-        {
+        if (resendingData) {
             log.append("Sending       ");
-        }
-        else
-        {
-            log.append("Resending ACK ");
+        } else {
+            log.append("Resending  ACK ");
         }
 
-        log.append(PacketHelper.generatePacketDetails(packet));
+        log.append(Helper.generatePacketDetails(packet));
 
         return log.toString();
     }
 
     /**
      * Generate details for a packet.
-     * 
+     *
      * @param packet the packet to generate details for
      * @return packet log
      */
-    public static String generatePacketDetails(Packet packet)
-    {
+    public static String generatePacketDetails(Packet packet) {
         StringBuilder log = new StringBuilder();
 
-        log.append("Packet Type: ");
+        log.append(" ");
 
-        switch (packet.getType())
-        {
+        switch (packet.getType()) {
             case 1:
                 log.append("SOT \t");
 
@@ -176,13 +170,13 @@ public class PacketHelper {
 
             case 2:
                 log.append("DATA\t");
-                log.append("Packet Number: " + packet.getSequenceNumber());
+                log.append("SEQ #: " + packet.getSequenceNumber());
 
                 break;
 
             case 3:
                 log.append("ACK \t");
-                log.append("ACK Number:    " + packet.getAcknumber());
+                log.append("ACK #: " + packet.getAcknumber());
 
                 break;
 
@@ -195,5 +189,37 @@ public class PacketHelper {
         return log.toString();
 
     }
-    
+
+    /**
+     * Simply logs to the command line and a file.
+     *
+     * @param log the message to log.
+     */
+    public static void write(String log) {
+        log = Helper.getTime() + " " + log;
+
+        System.out.println(log);
+
+        PrintWriter printWriter = null;
+        try {
+            printWriter = new PrintWriter(new BufferedWriter(new FileWriter(Helper.logFile, true)));
+        } catch (IOException ex) {
+            Logger.getLogger(Helper.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        printWriter.println(log);
+        printWriter.close();
+    }
+
+    /**
+     * Returns the current time and date.
+     *
+     * @return current time and date
+     */
+    public static String getTime() {
+        DateFormat df = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
+        Calendar calobj = Calendar.getInstance();
+
+        return (df.format(calobj.getTime()));
+    }
+
 }
