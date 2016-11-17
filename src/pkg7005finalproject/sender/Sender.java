@@ -81,7 +81,7 @@ public class Sender extends Client {
      */
     private void handShake() {
 
-        Packet packet = this.createPacket(1);
+        Packet packet = this.createPacket(SOT);
 
         // send the packet
         this.sendPacket(packet);
@@ -92,7 +92,7 @@ public class Sender extends Client {
         try {
             Packet receiverResponse = Network.getPacket(this.listener);
 
-            if (receiverResponse.getType() == 1) {
+            if (receiverResponse.getType() == SOT) {
                 Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, false));
             }
 
@@ -112,7 +112,7 @@ public class Sender extends Client {
      */
     private void sendEndOfTransmissionPacket() {
         // create an EOT packet.
-        Packet packet = this.createPacket(4);
+        Packet packet = this.createPacket(EOT);
 
         // send the packet
         this.sendPacket(packet);
@@ -133,13 +133,13 @@ public class Sender extends Client {
      */
     private void generateWindowAndSend() {
         for (int i = 1; i <= this.clientSettings.getWindowSize(); i++) {
-            // craft a data packet
-            Packet packet = this.createPacket(2);
+            // create data packet
+            Packet packet = this.createPacket(DATA);
 
-            // add it to the window
+            // add to the window
             this.packetWindow.add(packet);
 
-            // send the packet
+            // send packet
             this.sendPacket(packet);
 
             Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
@@ -155,6 +155,7 @@ public class Sender extends Client {
      * If an ACK isn't received within the timer, re-send packet.
      */
     private void ackTimeout() {
+        
         this.stopTimerAndAckReceiverThread();
 
         // if packet window isn't empty, send all those packets again, and wait for ack's.
@@ -243,6 +244,8 @@ public class Sender extends Client {
      * Stop the timer.
      */
     private void stopTimerAndAckReceiverThread() {
+        
+       
         this.timer.cancel();
         this.timer.purge();
 

@@ -60,8 +60,6 @@ public class Network {
     public static void sendPacket(DatagramSocket socket, Packet packet) throws IOException
     {
         InetAddress destinationAddress = InetAddress.getByName(packet.getDestinationAddress());
-
-        // dispatch request to the other method
         sendPacket(socket, packet, destinationAddress, packet.getDestinationPort());
     }
     

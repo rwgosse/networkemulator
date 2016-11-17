@@ -56,21 +56,21 @@ public class Emulator {
                 totalPackets++;
                 int type = packet.getType();
 
-                if (type == SOT || type == EOT) { // allow control packets
+                if (type == SOT || type == EOT) { 
+                    // allow control packets
                     Network.sendPacket(udpSocket, packet);
                     Helper.write("EMULATOR - " + "CONTROL PACKET FORWARDED - SEQ: " + packet.getSequenceNumber() );
                     totalforwarded++;
 
                 } else {
                     if (getRandom() <= networkSettings.getDropRate()) {
-                       // LogHelper.write("PACKET DROPPED - SEQ: " + packet.getSequenceNumber() );
+                       // drop the packet
                         Helper.write("EMULATOR - " + Helper.generateNetworkPacketLog(packet, false));
                         totalDropped++;
                     } else {
+                        // wait then forward packet
                         Thread.sleep(this.networkSettings.getDelay());
-
                         Network.sendPacket(udpSocket, packet);
-
                         Helper.write("EMULATOR - " + Helper.generateNetworkPacketLog(packet, true));
                         totalforwarded++;
                     }
