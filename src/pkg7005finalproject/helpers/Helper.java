@@ -1,7 +1,5 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * This module helps in the creation of packets & log file functions.
  */
 package pkg7005finalproject.helpers;
 
@@ -18,7 +16,7 @@ import pkg7005finalproject.models.Packet;
 
 /**
  *
- * @author Richard Gosse
+ * @author Richard Gosse 2016
  */
 public class Helper {
 
@@ -47,25 +45,21 @@ public class Helper {
             case 1:
                 // SOT
                 packet.setData("Handshake");
-
                 break;
 
             case 2:
                 // DATA
                 packet.setData("Packet Number: " + sequenceNumber);
-
                 break;
 
             case 3:
                 // ACK
                 packet.setData("Acknowledgement Number: " + acknowledgementNumber);
-
                 break;
 
             case 4:
                 // EOT
                 packet.setData("End of Transmission");
-
                 break;
         }
 
@@ -82,8 +76,8 @@ public class Helper {
     }
 
     /**
-     * Generates a generic packet log for network module. This can be put on the
-     * screen or in the log files.
+     * Generates a packet log for the emulator
+     * 
      *
      * @param packet the packet to generate the logs for
      * @param forwarded if the packet was forwarded or dropped.
@@ -106,11 +100,10 @@ public class Helper {
     }
 
     /**
-     * Generates a generic packet log for clients. This can be put on the screen
-     * or in the log files.
+     * Generates a generic packet log for sender & receiver
      *
      * @param packet the packet to generate the logs for
-     * @param sending true if sending packet, false if received it.
+     * @param sending true if sending packet, false if received
      *
      * @return a generic packet log
      */
@@ -130,7 +123,7 @@ public class Helper {
     }
 
     /**
-     * Generate client log for when resending (data or ACK) stuff.
+     * Generate client log for when resending (data or ACK)
      *
      * @param packet 
      * @param resendingData 
@@ -165,24 +158,20 @@ public class Helper {
         switch (packet.getType()) {
             case 1:
                 log.append("SOT \t");
-
                 break;
 
             case 2:
                 log.append("DATA\t");
                 log.append("SEQ #: " + packet.getSequenceNumber());
-
                 break;
 
             case 3:
                 log.append("ACK \t");
                 log.append("ACK #: " + packet.getAcknumber());
-
                 break;
 
             case 4:
                 log.append("EOT \t");
-
                 break;
         }
 
@@ -191,15 +180,13 @@ public class Helper {
     }
 
     /**
-     * Simply logs to the command line and a file.
+     * Reports to the console and log file.
      *
      * @param log the message to log.
      */
     public static void write(String log) {
         log = Helper.getTime() + " " + log;
-
         System.out.println(log);
-
         PrintWriter printWriter = null;
         try {
             printWriter = new PrintWriter(new BufferedWriter(new FileWriter(Helper.logFile, true)));
@@ -216,10 +203,10 @@ public class Helper {
      * @return current time and date
      */
     public static String getTime() {
-        DateFormat df = new SimpleDateFormat("dd/MM/yy HH:mm:ss");
-        Calendar calobj = Calendar.getInstance();
+        DateFormat dateFormat = new SimpleDateFormat("dd/MM/yy @ HH:mm:ss");
+        Calendar calender = Calendar.getInstance();
 
-        return (df.format(calobj.getTime()));
+        return (dateFormat.format(calender.getTime()));
     }
 
 }

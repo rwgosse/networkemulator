@@ -1,5 +1,5 @@
 /*
- * Abstract class to hold common variables for Sender & Receiver Modules
+ * Abstract class to hold common variables & methids for Sender & Receiver Modules
  * 
  */
 package pkg7005finalproject.models;
@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 
 /**
  *
- * @author Richard Gosse
+ * @author Richard Gosse 2016
  */
 public abstract class Client {
     
@@ -43,7 +43,7 @@ public abstract class Client {
     }
     
      /**
-     * Send a packet to the network emulator.
+     * Send a packet to the emulator.
      * 
      * @param packet the packet to send.
      */
@@ -68,7 +68,19 @@ public abstract class Client {
         }
     }
     
-    
+    /**
+     * Enter Client Settings manually
+     * 
+     * @param emulatorAddress
+     * @param networkPort
+     * @param senderAddress
+     * @param transmitterPort
+     * @param receiverAddress
+     * @param receiverPort
+     * @param maxPacketsToSend
+     * @param windowSize
+     * @param maxTimeout 
+     */
     private void setClientSettings(String emulatorAddress, int networkPort,
             String senderAddress, int transmitterPort, String receiverAddress,
             int receiverPort, int maxPacketsToSend, int windowSize, int maxTimeout)
@@ -89,14 +101,17 @@ public abstract class Client {
         }
     
     }
-    
+    /**
+     * Apply settings normally
+     * @param clientSettings 
+     */
     public void setClientSettings(ClientSettings clientSettings)
     {
         this.clientSettings = clientSettings;
     }
     
     /**
-     * Prints all configuration for the Client Module.
+     * Prints configuration for the Client Module.
      */
     public void reportSettings()
     {

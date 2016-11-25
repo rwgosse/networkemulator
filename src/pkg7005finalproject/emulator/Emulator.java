@@ -1,7 +1,8 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * This is the emulator module 
+ * The Emulator receives packets from the sender, determines if that packet 
+ * (data or ack) will be dropped to simulate network packet loss or if 
+ * the packet will then be forwarded after a short delay to the receiver. 
  */
 package pkg7005finalproject.emulator;
 
@@ -42,6 +43,7 @@ public class Emulator {
         int totalDropped = 0;
         int totalforwarded = 0;
 
+        // open a udp socket to be used for receiving packets from sender & receiver
         DatagramSocket udpSocket = null;
         try {
             udpSocket = Network.createServer(networkSettings.getNetworkPort());
@@ -50,32 +52,30 @@ public class Emulator {
             System.exit(0);
         }
 
-        while (active) {
+        while (active) { // emulator remains open until force killed
             try {
                 Packet packet = Network.getPacket(udpSocket);
                 totalPackets++;
                 int type = packet.getType();
-
-                if (type == SOT || type == EOT) { 
-                    // allow control packets
+                if (type == SOT || type == EOT) { // allow control packets
                     Network.sendPacket(udpSocket, packet);
                     Helper.write("EMULATOR - " + "CONTROL PACKET FORWARDED - SEQ: " + packet.getSequenceNumber() );
                     totalforwarded++;
 
                 } else {
-                    if (getRandom() <= networkSettings.getDropRate()) {
+                    if (getRandom() <= networkSettings.getDropRate()) { //determine if packet shall be dropped
                        // drop the packet
                         Helper.write("EMULATOR - " + Helper.generateNetworkPacketLog(packet, false));
                         totalDropped++;
                     } else {
-                        // wait then forward packet
+                        // otherwise, wait then forward packet
                         Thread.sleep(this.networkSettings.getDelay());
                         Network.sendPacket(udpSocket, packet);
                         Helper.write("EMULATOR - " + Helper.generateNetworkPacketLog(packet, true));
                         totalforwarded++;
                     }
                 }
-
+                //report to terminal & log progress
                Helper.write("EMULATOR - " + "Total packets:           " + totalPackets);
                Helper.write("EMULATOR - " + "Total packets dropped:   " + totalDropped);
                Helper.write("EMULATOR - " + "Total packets forwarded: " + totalforwarded);
@@ -86,16 +86,14 @@ public class Emulator {
             } catch (InterruptedException ex) {
                 Logger.getLogger(Emulator.class.getName()).log(Level.SEVERE, null, ex);
             }
-
         }
-
     }
 
     /**
      * Generate a random number between 1 and 100. Used in calculating if a
      * packet is dropped or not.
      *
-     * @return
+     * @return int
      */
     private int getRandom() {
         Random random = new Random();
@@ -104,7 +102,7 @@ public class Emulator {
     }
 
     /**
-     *
+     * Send current settings to the terminal.
      */
     public void reportSettings() {
         System.out.println(networkSettings);

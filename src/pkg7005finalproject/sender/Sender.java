@@ -1,7 +1,6 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Sender Module
+ * Sends packets to the receiver, via the emulator
  */
 package pkg7005finalproject.sender;
 
@@ -20,7 +19,7 @@ import pkg7005finalproject.models.Packet;
 
 /**
  *
- * @author Richard Gosse
+ * @author Richard Gosse 2016
  */
 public class Sender extends Client {
 
@@ -28,17 +27,14 @@ public class Sender extends Client {
     private ArrayList<Packet> packetWindow;
     private Timer timer;
     private boolean waitingForAcks;
-    
+
     private static final int SOT = 1;
     private static final int DATA = 2;
     private static final int ACK = 3;
     private static final int EOT = 4;
 
     /**
-     * Create a client, whose sole purpose is to send (transmit) to the
-     * receiver.
-     *
-     * @param clientMode the client mode.
+     * Constructor
      */
     public Sender() {
         super();
@@ -46,6 +42,9 @@ public class Sender extends Client {
         this.packetWindow = new ArrayList<Packet>();
     }
 
+    /**
+     * start sender operation
+     */
     @Override
     public void start() {
         Helper.write("-- SENDER START --");
@@ -53,11 +52,11 @@ public class Sender extends Client {
         this.handShake();
         int packetsSent = 0;
 
-        while (packetsSent < this.clientSettings.getMaxPackets()) {
-            this.generateWindowAndSend();
+        while (packetsSent < this.clientSettings.getMaxPackets()) { //remain open as long as there are packets to send
+            this.generateWindowAndSend(); // create window, fill it and send packets
             this.waitingForAcks = true;
             this.setTimerForACKs();
-            while (!this.packetWindow.isEmpty()) {
+            while (!this.packetWindow.isEmpty()) { // empty the window as acks are received & only when empty refill
                 if (!this.waitingForAcks) {
                     this.setTimerForACKs();
                     Helper.write("SENDER - Window Status: " + packetWindow.size()
@@ -73,7 +72,7 @@ public class Sender extends Client {
 
         this.sendEndOfTransmissionPacket();
         Helper.write("SENDER - Transmission Complete");
-        System.exit(0);
+        System.exit(0); //end
     }
 
     /**
@@ -81,14 +80,12 @@ public class Sender extends Client {
      */
     private void handShake() {
 
-        Packet packet = this.createPacket(SOT);
-
-        // send the packet
-        this.sendPacket(packet);
+        Packet packet = this.createPacket(SOT); // create start of transmission packet
+        this.sendPacket(packet);// send the packet
 
         Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
 
-        // wait for SOT packet from receiver
+        // wait for SOT reply
         try {
             Packet receiverResponse = Network.getPacket(this.listener);
 
@@ -96,8 +93,7 @@ public class Sender extends Client {
                 Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, false));
             }
 
-            // wait for 2 seconds before sending data packets.
-            Thread.sleep(2000);
+            Thread.sleep(2000); // wait before sending data
         } catch (IOException ex) {
             Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
         } catch (ClassNotFoundException ex) {
@@ -111,15 +107,19 @@ public class Sender extends Client {
      * Send the packet to end the transmission.
      */
     private void sendEndOfTransmissionPacket() {
-        // create an EOT packet.
-        Packet packet = this.createPacket(EOT);
 
-        // send the packet
-        this.sendPacket(packet);
+        Packet packet = this.createPacket(EOT); // create an EOT packet.
+        this.sendPacket(packet); // send the packet
 
         Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
     }
 
+    /**
+     * create a packet
+     *
+     * @param packetType
+     * @return
+     */
     @Override
     protected Packet createPacket(int packetType) {
         return Helper.makePacket(this.clientSettings.getReceiverAddress().getHostAddress(),
@@ -129,18 +129,16 @@ public class Sender extends Client {
     }
 
     /**
-     * Generate packets for a full window.
+     * Create window, fill with packets and send.
      */
     private void generateWindowAndSend() {
         for (int i = 1; i <= this.clientSettings.getWindowSize(); i++) {
-            // create data packet
-            Packet packet = this.createPacket(DATA);
 
-            // add to the window
-            this.packetWindow.add(packet);
+            Packet packet = this.createPacket(DATA);// create data packet
 
-            // send packet
-            this.sendPacket(packet);
+            this.packetWindow.add(packet); // add to the window
+
+            this.sendPacket(packet); // send packet
 
             Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
 
@@ -155,7 +153,7 @@ public class Sender extends Client {
      * If an ACK isn't received within the timer, re-send packet.
      */
     private void ackTimeout() {
-        
+
         this.stopTimerAndAckReceiverThread();
 
         // if packet window isn't empty, send all those packets again, and wait for ack's.
@@ -194,23 +192,16 @@ public class Sender extends Client {
     }
 
     /**
-     * Wait for ACKs.
+     * Wait for ACKs & remove acknowledged packets from window
      */
     private void receiveACKs() {
         try {
-            // can block for a maximum of 2 seconds
             this.listener.setSoTimeout(2000);
-
-            /**
-             * Scan while packet window size isn't 0. If 0, all packets have
-             * been ACK'ed. AND Scan while the still waiting for ack's.
-             */
             while (this.packetWindow.size() != 0 && this.waitingForAcks) {
 
                 Packet packet = Network.getPacket(Sender.this.listener);
 
-                //if an ACK received, log and remove from the window.
-                if (packet.getType() == 3) {
+                if (packet.getType() == ACK) {
                     Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, false));
                     Sender.this.removePacketFromWindow(packet.getAcknumber());
                 }
@@ -227,10 +218,9 @@ public class Sender extends Client {
     }
 
     /**
-     * Checks all packets in the current window and removes the one whose
-     * acknowledgement number is equal to the ACK number of the received packet.
+     * Removed packet from window
      *
-     * @param ackNum the acknowledgement number
+     * @param ackNum
      */
     private void removePacketFromWindow(int ackNum) {
         for (int i = 0; i < this.packetWindow.size(); i++) {
@@ -244,14 +234,9 @@ public class Sender extends Client {
      * Stop the timer.
      */
     private void stopTimerAndAckReceiverThread() {
-        
-       
         this.timer.cancel();
         this.timer.purge();
-
         this.timer = null;
-
-        // not waiting for ack's now.
         this.waitingForAcks = false;
     }
 

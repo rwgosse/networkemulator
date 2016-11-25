@@ -27,12 +27,18 @@ public class Receiver extends Client {
     private static final int ACK = 3;
     private static final int EOT = 4;
 
+    /**
+     * Constructor
+     */
     public Receiver() {
         super();
         this.currentSequenceNumber = 0;
         this.ackedPacketList = new ArrayList<Packet>();
     }
 
+    /**
+     * Begins the receiver operation
+     */
     @Override
     public void start() {
         Helper.write("-- RECEIVER START --");
@@ -42,7 +48,7 @@ public class Receiver extends Client {
         int totalPackets = 0;
         int totalDuplicates = 0;
 
-        while (connectionOpen) {
+        while (connectionOpen) { // stay open until EOT packet received
 
             Packet incommingPacket;
             try {
@@ -51,10 +57,8 @@ public class Receiver extends Client {
                 switch (incommingPacket.getType()) {
 
                     case DATA: // data packet
-
                         // update current sequence number
                         this.currentSequenceNumber = incommingPacket.getSequenceNumber();
-
                         // craft and send ACK packet
                         Packet ackPacket = this.createPacket(ACK); // ack packet
                         this.sendPacket(ackPacket);
@@ -65,18 +69,16 @@ public class Receiver extends Client {
                             Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
                             Helper.write("RECEIVER - " + Helper.generateClientPacketLog(ackPacket, true));
                         } else {
-                            // ACKing again - earlier ACK probably got lost
+                            // ACK again - earlier ACK probably got lost
                             totalDuplicates++;
                             Helper.write("RECEIVER - " + Helper.generateClientResendLog(incommingPacket, false));
                         }
 
-                        // add to list of ack'ed packets
+                        // add to list of ack'd packets
                         this.ackedPacketList.add(incommingPacket);
                         break;
 
-                    case 4: // end of transmission packet
-                
-
+                    case EOT: // end of transmission packet
                         Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
                         Helper.write("RECEIVER - " + "Total Packets Received: " + totalPackets);
                         Helper.write("RECEIVER - " + "Total Duplicate ACK's:  " + totalDuplicates);
@@ -92,9 +94,14 @@ public class Receiver extends Client {
 
         }
         Helper.write("RECEIVER - Transmission Complete");
-        System.exit(0);
+        System.exit(0); // end 
     }
 
+    /**
+     * Create a packet
+     * @param packetType
+     * @return Packet 
+     */
     @Override
     protected Packet createPacket(int packetType) {
         return Helper.makePacket(this.clientSettings.getSenderAddress()
@@ -104,12 +111,15 @@ public class Receiver extends Client {
                 this.clientSettings.getWindowSize());
     }
 
+    /**
+     * Await SOT packet, and establish connection 
+     */
     public void awaitHandshake() {
         try {
 
             Packet incommingPacket = Network.getPacket(this.listener);
 
-            if (incommingPacket.getType() == 1) // start of transmission
+            if (incommingPacket.getType() == SOT) // start of transmission
             {
                 Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
 
@@ -120,7 +130,7 @@ public class Receiver extends Client {
             } else {
                 Helper.write("RECEIVER - " + Helper.generateClientPacketLog(incommingPacket, false));
 
-                // ummm, not a start of transmission packet
+                // not a start of transmission packet, this would be really odd
                 this.awaitHandshake();
             }
         } catch (ClassNotFoundException ex) {
@@ -130,6 +140,11 @@ public class Receiver extends Client {
         }
     }
 
+    /**
+     * Has the packet been acknowledged already?
+     * @param seqNum
+     * @return boolean
+     */
     private boolean isAcked(int seqNum) {
         for (int i = 0; i < this.ackedPacketList.size(); i++) {
             if (this.ackedPacketList.get(i).getSequenceNumber() == seqNum) {

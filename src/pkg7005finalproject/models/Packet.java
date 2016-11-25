@@ -13,21 +13,37 @@ import java.io.Serializable;
  */
 public class Packet implements Serializable{
     
-    private int type;
+    private int type; // 1 = SOT, 2 = Data, 3 = ACK, 4 = EOT
     private int sequenceNumber;
-    private String data;
+    private String data; // inconsequential string used as filler, just id's type and sequence #
     private int windowSize;
     private int ackNumber;
     
-    private String sourceAddress; // do I need these?
+    private String sourceAddress; // where the packet originated
     private int sourcePort;
     
-    private String destinationAddress; // do I need these?
+    private String destinationAddress; // where the packet is destined
     private int destinationPort;
 
+    /**
+     * Empty Constructor
+     */
     public Packet() {
     }
 
+    /**
+     * Constructor
+     * 
+     * @param type
+     * @param sequenceNumber
+     * @param data
+     * @param windowSize
+     * @param ackNumber
+     * @param sourceAddress
+     * @param sourcePort
+     * @param destinationAddress
+     * @param destinationPort 
+     */
     public Packet(int type, int sequenceNumber, String data, int windowSize, int ackNumber, String sourceAddress, int sourcePort, String destinationAddress, int destinationPort) {
         this.type = type;
         this.sequenceNumber = sequenceNumber;

@@ -9,7 +9,7 @@ import java.net.InetAddress;
 
 /**
  *
- * @author Richard Gosse
+ * @author Richard Gosse 2016
  */
 public class ClientSettings {
     
@@ -26,9 +26,25 @@ public class ClientSettings {
     private int windowSize;
     private int maxTimeOut;
 
+    /**
+     * Empty Constructor
+     */
     public ClientSettings() {
     }
 
+    /**
+     * Constructor
+     * 
+     * @param emulatorAddress
+     * @param emulatorPort
+     * @param senderAddress
+     * @param senderPort
+     * @param receiverAddress
+     * @param receiverPort
+     * @param maxPackets
+     * @param windowSize
+     * @param maxTimeOut 
+     */
     public ClientSettings(InetAddress emulatorAddress, int emulatorPort, InetAddress senderAddress, int senderPort, InetAddress receiverAddress, int receiverPort, int maxPackets, int windowSize, int maxTimeOut) {
         this.emulatorAddress = emulatorAddress;
         this.emulatorPort = emulatorPort;
@@ -72,8 +88,6 @@ public class ClientSettings {
     public void setMaxPackets(int maxPackets) {
         this.maxPackets = maxPackets;
     }
-
-   
 
     public int getReceiverPort() {
         return receiverPort;

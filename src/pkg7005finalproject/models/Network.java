@@ -1,7 +1,5 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * Common methods used for establishing connections and retreiving packets
  */
 package pkg7005finalproject.models;
 
@@ -20,17 +18,30 @@ import java.net.SocketException;
 
 /**
  *
- * @author Richard
+ * @author Richard Gosse 2016
  */
 public class Network {
     
+    /**
+     * Create a new UDP Socket
+     * 
+     * @param port
+     * @return DatagramSocket
+     * @throws SocketException 
+     */
     public static DatagramSocket createServer(int port) throws SocketException {
         return new DatagramSocket(port);
         
     }
     
-    
-    
+    /**
+     * Retrieve incoming socket from the network
+     * 
+     * @param socket
+     * @return Packet
+     * @throws IOException
+     * @throws ClassNotFoundException 
+     */
     public static Packet getPacket(DatagramSocket socket) throws IOException, ClassNotFoundException {
         byte[] dataBytes = new byte[1024];
         DatagramPacket datagramPacket = new DatagramPacket(dataBytes, dataBytes.length);
@@ -50,7 +61,7 @@ public class Network {
      /**
      * Creates a socket on any available port.
      * 
-     * @return 
+     * @return DatagramSocket
      */
     public static DatagramSocket createSocket() throws SocketException
     {
