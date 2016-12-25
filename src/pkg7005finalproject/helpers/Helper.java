@@ -163,6 +163,7 @@ public class Helper {
             case 2:
                 log.append("DATA\t");
                 log.append("SEQ #: " + packet.getSequenceNumber());
+                log.append(" WS: " + packet.getWindowSize());
                 break;
 
             case 3:

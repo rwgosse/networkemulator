@@ -25,6 +25,9 @@ public class Sender extends Client {
 
     private int sequenceNumber;
     private ArrayList<Packet> packetWindow;
+    private int newPacketWindowSize = 0;
+    private int SSThresh = 0;
+    private boolean explicitCongestionNotification = false;
     private Timer timer;
     private boolean waitingForAcks;
 
@@ -125,14 +128,32 @@ public class Sender extends Client {
         return Helper.makePacket(this.clientSettings.getReceiverAddress().getHostAddress(),
                 this.clientSettings.getReceiverPort(), this.clientSettings.getSenderAddress()
                 .getHostAddress(), this.clientSettings.getSenderPort(), packetType,
-                this.sequenceNumber, this.sequenceNumber, this.clientSettings.getWindowSize());
+                this.sequenceNumber, this.sequenceNumber, newPacketWindowSize);
     }
 
     /**
      * Create window, fill with packets and send.
      */
     private void generateWindowAndSend() {
-        for (int i = 1; i <= this.clientSettings.getWindowSize(); i++) {
+
+        if (!explicitCongestionNotification) {
+           SSThresh = newPacketWindowSize / 2;
+            Helper.write("SENDER - INCREASE WINDOW SIZE +1");
+            newPacketWindowSize++; // additive increase
+        } else {
+            Helper.write("SENDER - DECREASE WINDOW SIZE /2");
+            newPacketWindowSize = (int) Math.ceil((double) newPacketWindowSize / 2); // multipitive decrease
+        }
+        explicitCongestionNotification = false; // reset condition
+        
+        // regulate the pipeline
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+
+        for (int i = 1; i <= newPacketWindowSize; i++) {
 
             Packet packet = this.createPacket(DATA);// create data packet
 
@@ -164,6 +185,7 @@ public class Sender extends Client {
                 Packet packet = this.packetWindow.get(i);
                 this.sendPacket(packet);
                 Helper.write("SENDER - " + "Resending " + Helper.generatePacketDetails(packet));
+                explicitCongestionNotification = true;
             }
 
             this.setTimerForACKs();
@@ -196,7 +218,7 @@ public class Sender extends Client {
      */
     private void receiveACKs() {
         try {
-            this.listener.setSoTimeout(2000);
+            this.listener.setSoTimeout(4000);
             while (this.packetWindow.size() != 0 && this.waitingForAcks) {
 
                 Packet packet = Network.getPacket(Sender.this.listener);
@@ -234,9 +256,11 @@ public class Sender extends Client {
      * Stop the timer.
      */
     private void stopTimerAndAckReceiverThread() {
-        this.timer.cancel();
-        this.timer.purge();
-        this.timer = null;
+        if (timer != null) {
+            this.timer.cancel();
+            this.timer.purge();
+            this.timer = null;
+        }
         this.waitingForAcks = false;
     }
 
