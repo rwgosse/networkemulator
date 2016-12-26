@@ -12,9 +12,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-
-
-
+import pkg7005finalproject.helpers.Helper;
 
 /**
  *
@@ -45,9 +43,12 @@ public class Network {
     public static Packet getPacket(DatagramSocket socket) throws IOException, ClassNotFoundException {
         byte[] dataBytes = new byte[1024];
         DatagramPacket datagramPacket = new DatagramPacket(dataBytes, dataBytes.length);
+        socket.setSendBufferSize(2048); //65507
+        socket.setReceiveBufferSize(2048); //65507
        
       
         socket.receive(datagramPacket);
+       //Helper.write("SOCKET RTO: " + socket.getSoTimeout() + "R" + socket.getReceiveBufferSize() + "S" + socket.getSendBufferSize());
 
         dataBytes = datagramPacket.getData();
 

@@ -7,6 +7,7 @@ package pkg7005finalproject.sender;
 import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,7 +16,9 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import pkg7005finalproject.helpers.Helper;
+import static pkg7005finalproject.Main.ANSI_RED;
+import static pkg7005finalproject.Main.ANSI_RESET;
+import pkg7005finalproject.helpers.*;
 import pkg7005finalproject.models.Client;
 import pkg7005finalproject.models.Network;
 import pkg7005finalproject.models.Packet;
@@ -29,14 +32,21 @@ public class Sender extends Client {
     private int sequenceNumber;
     private ArrayList<Packet> packetWindow;
     private ArrayList<Integer> ackedPackets;
+
     private int newPacketWindowSize = 0;
     private int SSThresh = 5;
     private boolean explicitCongestionNotification = false;
     private Timer timer;
     private boolean waitingForAcks;
     private boolean tahoe = false;
+    private static int RTO = 4000; // Retransmission Timeout (RTO)
+    private static final int PIPELINE_DELAY = 1000; // Delay before starting new window
+    private static final int TAHOE_REPEAT_ACKS = 3; // # of repeat acks to begin slow start
+    private static final double ALPHA = 0.125; // used in calculating estimatedRTT
 
     private int rtt = 0;
+    private double estimatedRTT = 0.236;
+    private double maxRTT = 0.236;
     private HashMap timeStamp;
 
     private static final int SOT = 1;
@@ -78,6 +88,7 @@ public class Sender extends Client {
             packetsSent += newPacketWindowSize;
 
             Helper.write("SENDER - Packets Sent:      " + packetsSent);
+
             Helper.write("SENDER - Packets Remaining: "
                     + (this.clientSettings.getMaxPackets() - packetsSent));
             //Helper.write("SENDER - SSTHRESH: " + SSThresh);
@@ -85,6 +96,9 @@ public class Sender extends Client {
 
         this.sendEndOfTransmissionPacket();
         Helper.write("SENDER - Transmission Complete");
+
+        //Generate Graph Here
+        //End Graph Generation
         System.exit(0); //end
     }
 
@@ -170,7 +184,7 @@ public class Sender extends Client {
 
         // regulate the pipeline
         try {
-            Thread.sleep(1000);
+            Thread.sleep(RTO);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
@@ -178,14 +192,10 @@ public class Sender extends Client {
         for (int i = 1; i <= newPacketWindowSize; i++) {
 
             Packet packet = this.createPacket(DATA);// create data packet
-
             this.packetWindow.add(packet); // add to the window
-
-            timeStamp.put((int) packet.getSequenceNumber(), (long) System.currentTimeMillis());
-
+            timeStamp.put((int) packet.getSequenceNumber(), (long) System.currentTimeMillis()); // record send time
             this.sendPacket(packet); // send packet
-
-            Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, true));
+            Helper.write("       -   [] " + Helper.generateClientPacketLog(packet, true));
 
             // increment the sequence number
             this.sequenceNumber++;
@@ -207,8 +217,15 @@ public class Sender extends Client {
 
             for (int i = 0; i < this.packetWindow.size(); i++) {
                 Packet packet = this.packetWindow.get(i);
+                
+                long tStart = (long) timeStamp.get(packet.getAcknumber());
+                long tEnd = System.currentTimeMillis();
+                long tDelta = tEnd - tStart;
+                double elapsedSeconds = tDelta / 1000.0;
+                
+                Helper.write("SENDER - " + ANSI_RED + "TIMEOUT: " + ((int) (elapsedSeconds * 1000)) + "  Resending " + ANSI_RESET + Helper.generatePacketDetails(packet));
                 this.sendPacket(packet);
-                Helper.write("SENDER - " + "Resending " + Helper.generatePacketDetails(packet));
+                
                 explicitCongestionNotification = true;
             }
 
@@ -222,7 +239,19 @@ public class Sender extends Client {
      */
     private void setTimerForACKs() {
         this.timer = new Timer();
-
+        
+        
+        if (maxRTT > estimatedRTT ) {
+            //Helper.write("SENDER - RTO: " + RTO + " based on maxRTT");
+            RTO = (int) Long.parseLong(String.format("%.0f", (maxRTT * 1000 * 2)));
+        }
+        else {
+           // Helper.write("SENDER - RTO: " + RTO + " based on sampleRTT");
+        RTO = (int) Long.parseLong(String.format("%.0f", (estimatedRTT * 1000 * 2))); //RTO(i) = β * SRTT(i)
+        }
+        
+        
+        
         this.timer.schedule(new TimerTask() {
 
             @Override
@@ -231,7 +260,9 @@ public class Sender extends Client {
                 Sender.this.ackTimeout();
             }
 
-        }, this.clientSettings.getMaxTimeOut());
+        }, RTO);
+     
+        
 
         // receive ack's in the meantime
         this.receiveACKs();
@@ -242,7 +273,7 @@ public class Sender extends Client {
      */
     private void receiveACKs() {
         try {
-            this.listener.setSoTimeout(6000);
+            this.listener.setSoTimeout(RTO);
             while (this.packetWindow.size() != 0 && this.waitingForAcks) {
 
                 Packet packet = Network.getPacket(Sender.this.listener);
@@ -252,7 +283,7 @@ public class Sender extends Client {
                     ackedPackets.add(packet.getAcknumber());
                     Sender.this.removePacketFromWindow(packet.getAcknumber());
                     int occurrences = Collections.frequency(ackedPackets, packet.getAcknumber());
-                    if (occurrences >= 4) {
+                    if (occurrences >= TAHOE_REPEAT_ACKS) {
                         explicitCongestionNotification = true;
                         tahoe = true;
                     }
@@ -260,7 +291,8 @@ public class Sender extends Client {
                 }
             }
         } catch (SocketTimeoutException ex) {
-            Helper.write("SENDER - " + "Socket Time Out");
+           // Helper.write("SENDER - " + "Socket Time Out");
+           // Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
         } catch (SocketException ex) {
             Logger.getLogger(Sender.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
@@ -283,7 +315,9 @@ public class Sender extends Client {
                 long tEnd = System.currentTimeMillis();
                 long tDelta = tEnd - tStart;
                 double elapsedSeconds = tDelta / 1000.0;
-                Helper.write("SENDER - " + "RTT:" + elapsedSeconds);
+                Helper.write("SENDER - " + "RTT:" + (int) (elapsedSeconds * 1000) + " SRTT: " + (int) (estimatedRTT * 1000) + " RTO: " +  RTO);
+                Srtt(elapsedSeconds);
+
             }
         }
     }
@@ -301,4 +335,13 @@ public class Sender extends Client {
         this.waitingForAcks = false;
     }
 
+    private void Srtt(double elapsedSeconds) {
+        estimatedRTT = (1 - ALPHA) * estimatedRTT + ALPHA * elapsedSeconds;
+        estimatedRTT = (double) Math.round(estimatedRTT * 1000d) / 1000d;
+        if (estimatedRTT > maxRTT){
+            maxRTT = estimatedRTT;
+        }
+    }
+    
+    
 }
