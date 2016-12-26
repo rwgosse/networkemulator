@@ -24,6 +24,8 @@ public class Packet implements Serializable{
     
     private String destinationAddress; // where the packet is destined
     private int destinationPort;
+    
+   
 
     /**
      * Empty Constructor

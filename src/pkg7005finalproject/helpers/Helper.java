@@ -12,6 +12,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static pkg7005finalproject.Main.*;
 import pkg7005finalproject.models.Packet;
 
 /**
@@ -88,9 +89,9 @@ public class Helper {
         StringBuilder log = new StringBuilder();
 
         if (forwarded) {
-            log.append("PACKET FORWARDED ");
+            log.append(ANSI_GREEN + "PACKET FORWARDED " + ANSI_RESET);
         } else {
-            log.append("PACKET DROPPED ");
+            log.append(ANSI_RED + "PACKET DROPPED " + ANSI_RESET);
         }
 
         log.append(Helper.generatePacketDetails(packet));

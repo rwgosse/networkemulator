@@ -12,6 +12,7 @@ import java.net.SocketException;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static pkg7005finalproject.Main.*;
 import pkg7005finalproject.helpers.Helper;
 import pkg7005finalproject.models.*;
 

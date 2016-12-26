@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Level;
@@ -25,11 +28,16 @@ public class Sender extends Client {
 
     private int sequenceNumber;
     private ArrayList<Packet> packetWindow;
+    private ArrayList<Integer> ackedPackets;
     private int newPacketWindowSize = 0;
-    private int SSThresh = 0;
+    private int SSThresh = 5;
     private boolean explicitCongestionNotification = false;
     private Timer timer;
     private boolean waitingForAcks;
+    private boolean tahoe = false;
+
+    private int rtt = 0;
+    private HashMap timeStamp;
 
     private static final int SOT = 1;
     private static final int DATA = 2;
@@ -43,6 +51,7 @@ public class Sender extends Client {
         super();
         this.sequenceNumber = 1;
         this.packetWindow = new ArrayList<Packet>();
+        this.ackedPackets = new ArrayList<Integer>();
     }
 
     /**
@@ -66,11 +75,12 @@ public class Sender extends Client {
                             + " packets remaining.");
                 }
             }
-            packetsSent += this.clientSettings.getWindowSize();
+            packetsSent += newPacketWindowSize;
 
             Helper.write("SENDER - Packets Sent:      " + packetsSent);
             Helper.write("SENDER - Packets Remaining: "
                     + (this.clientSettings.getMaxPackets() - packetsSent));
+            //Helper.write("SENDER - SSTHRESH: " + SSThresh);
         }
 
         this.sendEndOfTransmissionPacket();
@@ -137,27 +147,41 @@ public class Sender extends Client {
     private void generateWindowAndSend() {
 
         if (!explicitCongestionNotification) {
-           SSThresh = newPacketWindowSize / 2;
-            Helper.write("SENDER - INCREASE WINDOW SIZE +1");
-            newPacketWindowSize++; // additive increase
+            if (newPacketWindowSize >= SSThresh || newPacketWindowSize == 0) {
+                Helper.write("SENDER - INCREASE WINDOW SIZE +1");
+                newPacketWindowSize++; // additive increase
+            } else {
+                Helper.write("SENDER - INCREASE WINDOW SIZE x2");
+                newPacketWindowSize = (int) Math.ceil((double) newPacketWindowSize * 2);
+            }
+
         } else {
-            Helper.write("SENDER - DECREASE WINDOW SIZE /2");
-            newPacketWindowSize = (int) Math.ceil((double) newPacketWindowSize / 2); // multipitive decrease
+            SSThresh = newPacketWindowSize / 2;
+            if (tahoe) {
+                Helper.write("SENDER - RESET WINDOW SIZE = 1 ");
+                newPacketWindowSize = 1;
+                tahoe = false;
+            } else {
+                Helper.write("SENDER - DECREASE WINDOW SIZE /2");
+                newPacketWindowSize = (int) Math.ceil((double) newPacketWindowSize / 2); // multipitive decrease
+            }
+            explicitCongestionNotification = false; // reset condition
         }
-        explicitCongestionNotification = false; // reset condition
-        
+
         // regulate the pipeline
         try {
             Thread.sleep(1000);
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
         }
-
+        timeStamp = new HashMap();
         for (int i = 1; i <= newPacketWindowSize; i++) {
 
             Packet packet = this.createPacket(DATA);// create data packet
 
             this.packetWindow.add(packet); // add to the window
+
+            timeStamp.put((int) packet.getSequenceNumber(), (long) System.currentTimeMillis());
 
             this.sendPacket(packet); // send packet
 
@@ -218,14 +242,21 @@ public class Sender extends Client {
      */
     private void receiveACKs() {
         try {
-            this.listener.setSoTimeout(4000);
+            this.listener.setSoTimeout(6000);
             while (this.packetWindow.size() != 0 && this.waitingForAcks) {
 
                 Packet packet = Network.getPacket(Sender.this.listener);
 
                 if (packet.getType() == ACK) {
                     Helper.write("SENDER - " + Helper.generateClientPacketLog(packet, false));
+                    ackedPackets.add(packet.getAcknumber());
                     Sender.this.removePacketFromWindow(packet.getAcknumber());
+                    int occurrences = Collections.frequency(ackedPackets, packet.getAcknumber());
+                    if (occurrences >= 4) {
+                        explicitCongestionNotification = true;
+                        tahoe = true;
+                    }
+
                 }
             }
         } catch (SocketTimeoutException ex) {
@@ -248,6 +279,11 @@ public class Sender extends Client {
         for (int i = 0; i < this.packetWindow.size(); i++) {
             if (this.packetWindow.get(i).getAcknumber() == ackNum) {
                 this.packetWindow.remove(i);
+                long tStart = (long) timeStamp.get(ackNum);
+                long tEnd = System.currentTimeMillis();
+                long tDelta = tEnd - tStart;
+                double elapsedSeconds = tDelta / 1000.0;
+                Helper.write("SENDER - " + "RTT:" + elapsedSeconds);
             }
         }
     }
@@ -260,6 +296,7 @@ public class Sender extends Client {
             this.timer.cancel();
             this.timer.purge();
             this.timer = null;
+
         }
         this.waitingForAcks = false;
     }
